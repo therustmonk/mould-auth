@@ -2,7 +2,9 @@
 
 extern crate mould;
 
-pub mod token;
+mod token;
+
+pub use token::*;
 
 use mould::Session;
 
