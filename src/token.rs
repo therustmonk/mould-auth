@@ -4,8 +4,8 @@ use mould::prelude::*;
 use super::{Role, Authorize};
 
 /// A generic token checking interface.
-pub trait TokenChecker<R: Role>: 'static {
-    fn get_role_for_token(&mut self, token: &str) -> Option<R>;
+pub trait TokenChecker<T: Role>: 'static {
+    fn get_role_for_token(&mut self, token: &str) -> Option<T>;
 }
 
 /// A handler which use `TokenChecker` to set role to session.
@@ -29,9 +29,9 @@ impl<TC, R> TokenRouter<TC, R>
 
 }
 
-impl<CTX, TC, R> Router<CTX> for TokenRouter<TC, R>
-    where CTX: Authorize<R>, TC: TokenChecker<R>, R: Role {
-    fn route(&self, request: &Request) -> Box<Worker<CTX>> {
+impl<T, TC, R> Router<T> for TokenRouter<TC, R>
+    where T: Authorize<R>, TC: TokenChecker<R>, R: Role {
+    fn route(&self, request: &Request) -> Box<Worker<T>> {
         if request.action == "do-auth" {
             Box::new(TokenCheckWorker::new(self.checker.clone()))
         } else {
@@ -54,9 +54,9 @@ impl<TC, R> TokenCheckWorker<TC, R>
     }
 }
 
-impl<CTX, TC, R> Worker<CTX> for TokenCheckWorker<TC, R>
-    where CTX: Authorize<R>, TC: TokenChecker<R>, R: Role {
-    fn prepare(&mut self, session: &mut CTX, mut request: Request) -> worker::Result<Shortcut> {
+impl<T, TC, R> Worker<T> for TokenCheckWorker<TC, R>
+    where T: Authorize<R>, TC: TokenChecker<R>, R: Role {
+    fn prepare(&mut self, session: &mut T, mut request: Request) -> worker::Result<Shortcut> {
         let token: String = try!(request.extract("token")
             .ok_or(worker::Error::reject("No token provided!")));
         let role = {
