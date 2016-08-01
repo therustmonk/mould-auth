@@ -11,17 +11,17 @@ pub trait TokenChecker<T: Role>: 'static {
 /// A handler which use `TokenChecker` to set role to session.
 /// The following actions available:
 /// * `do-auth` - try to authorize by token
-pub struct TokenRouter<TC, R>
+pub struct TokenService<TC, R>
     where TC: TokenChecker<R>, R: Role {
     checker: Arc<Mutex<TC>>,
     _role: PhantomData<R>,
 }
 
-impl<TC, R> TokenRouter<TC, R>
+impl<TC, R> TokenService<TC, R>
     where TC: TokenChecker<R>, R: Role {
 
     pub fn new(checker: TC) -> Self {
-        TokenRouter {
+        TokenService {
             checker: Arc::new(Mutex::new(checker)),
             _role: PhantomData,
         }
@@ -29,7 +29,7 @@ impl<TC, R> TokenRouter<TC, R>
 
 }
 
-impl<T, TC, R> Router<T> for TokenRouter<TC, R>
+impl<T, TC, R> Service<T> for TokenService<TC, R>
     where T: Authorize<R>, TC: TokenChecker<R>, R: Role {
     fn route(&self, request: &Request) -> Box<Worker<T>> {
         if request.action == "do-auth" {
