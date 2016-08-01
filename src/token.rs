@@ -31,7 +31,7 @@ impl<TC, R> TokenRouter<TC, R>
 
 impl<CTX, TC, R> Router<CTX> for TokenRouter<TC, R>
     where CTX: Authorize<R>, TC: TokenChecker<R>, R: Role {
-    fn route(&self, _: &CTX, request: &Request) -> Box<Worker<CTX>> {
+    fn route(&self, request: &Request) -> Box<Worker<CTX>> {
         if request.action == "do-auth" {
             Box::new(TokenCheckWorker::new(self.checker.clone()))
         } else {
