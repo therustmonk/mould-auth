@@ -1,12 +1,8 @@
 use std::marker::PhantomData;
 use std::sync::{Arc, Mutex};
 use mould::prelude::*;
-use super::{Role, Authorize};
-
-/// A generic token checking interface.
-pub trait TokenChecker<T: Role>: 'static {
-    fn get_role_for_token(&mut self, token: &str) -> Option<T>;
-}
+use authorize::{Role, Authorize};
+use authorize::checkers::TokenChecker;
 
 /// A handler which use `TokenChecker` to set role to session.
 /// The following actions available:
@@ -30,7 +26,7 @@ impl<TC, R> TokenService<TC, R>
 }
 
 impl<T, TC, R> Service<T> for TokenService<TC, R>
-    where T: Authorize<R>, TC: TokenChecker<R>, R: Role {
+    where T: Authorize<R>, TC: TokenChecker<R> + 'static, R: Role + 'static {
     fn route(&self, request: &Request) -> Box<Worker<T>> {
         if request.action == "do-auth" {
             Box::new(TokenCheckWorker::new(self.checker.clone()))
