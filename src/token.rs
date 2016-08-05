@@ -53,8 +53,7 @@ impl<TC, R> TokenCheckWorker<TC, R>
 impl<T, TC, R> Worker<T> for TokenCheckWorker<TC, R>
     where T: Authorize<R>, TC: TokenChecker<R>, R: Role {
     fn prepare(&mut self, session: &mut T, mut request: Request) -> worker::Result<Shortcut> {
-        let token: String = try!(request.extract("token")
-            .ok_or(worker::Error::reject("No token provided!")));
+        let token: String = extract_field!(request, "token");
         let role = {
             let mut guard = try!(self.checker.lock()
                 .or(Err(worker::Error::reject("Impossible to check token!"))));
