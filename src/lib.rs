@@ -2,7 +2,7 @@
 
 #[macro_use(extract_field)]
 extern crate mould;
-extern crate authorize;
+pub extern crate authorize;
 
 mod token;
 
