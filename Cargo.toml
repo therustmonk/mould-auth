@@ -4,5 +4,5 @@ version = "0.0.5"
 authors = ["Denis Kolodin <deniskolodin@gmail.com>"]
 
 [dependencies]
-mould = { path = "../mould" }
+mould = "0.0.16"
 authorize = "0.1.1"
