@@ -1,6 +1,6 @@
 //! Mould plugin for token authentication.
 
-#[macro_use(extract_field)]
+#[macro_use]
 extern crate mould;
 pub extern crate authorize;
 

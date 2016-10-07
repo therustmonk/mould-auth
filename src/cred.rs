@@ -57,16 +57,12 @@ impl<T, C, R> Worker<T> for AuthCheckWorker<C, R>
         let password: String = extract_field!(request, "password");
         let role = {
             let mut guard = try!(self.checker.lock()
-                .or(Err(worker::Error::reject("Impossible to check credential!"))));
+                .or(Err("Impossible to check credential!")));
             guard.get_role_for_credential(&login, &password)
         };
-        let success = role.is_some();
+        ensure_it!(role.is_some(), "Credentials is not valid!");
         session.set_role(role);
-        if success {
-            Ok(Shortcut::Done)
-        } else {
-            Err(worker::Error::reject("Token is not valid!"))
-        }
+        Ok(Shortcut::Done)
     }
 }
 

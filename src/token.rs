@@ -56,15 +56,11 @@ impl<T, C, R> Worker<T> for TokenCheckWorker<C, R>
         let token: String = extract_field!(request, "token");
         let role = {
             let mut guard = try!(self.checker.lock()
-                .or(Err(worker::Error::reject("Impossible to check token!"))));
+                .or(Err("Impossible to check token!")));
             guard.get_role_for_token(&token)
         };
-        let success = role.is_some();
+        ensure_it!(role.is_some(), "Token is not valid!");
         session.set_role(role);
-        if success {
-            Ok(Shortcut::Done)
-        } else {
-            Err(worker::Error::reject("Token is not valid!"))
-        }
+        Ok(Shortcut::Done)
     }
 }
