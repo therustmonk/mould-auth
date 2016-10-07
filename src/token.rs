@@ -25,11 +25,13 @@ impl<C, R, E> TokenService<C, R, E>
             _error: PhantomData,
         }
     }
-
 }
 
 impl<T, C, R, E> Service<T> for TokenService<C, R, E>
-    where T: Authorize<R>, C: TokenChecker<R, E> + 'static, R: Role + 'static, E: Error + 'static {
+    where T: Authorize<R>,
+          C: TokenChecker<R, E> + Send + 'static,
+          R: Role + Send + Sync + 'static,
+          E: Error + Send + Sync + 'static {
     fn route(&self, request: &Request) -> Box<Worker<T>> {
         if request.action == "do-auth" {
             Box::new(TokenCheckWorker::new(self.checker.clone()))

@@ -29,7 +29,10 @@ impl<C, R, E> AuthService<C, R, E>
 }
 
 impl<T, C, R, E> Service<T> for AuthService<C, R, E>
-    where T: Authorize<R>, C: CredentialChecker<R, E> + 'static, R: Role + 'static, E: Error + 'static {
+    where T: Authorize<R>,
+          C: CredentialChecker<R, E> + Send + 'static,
+          R: Role + Send + Sync + 'static,
+          E: Error + Send + Sync + 'static {
     fn route(&self, request: &Request) -> Box<Worker<T>> {
         if request.action == "do-auth" {
             Box::new(AuthCheckWorker::new(self.checker.clone()))
