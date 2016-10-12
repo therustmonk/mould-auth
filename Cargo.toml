@@ -4,5 +4,5 @@ version = "0.0.6"
 authors = ["Denis Kolodin <deniskolodin@gmail.com>"]
 
 [dependencies]
-mould = "0.0.16"
+mould = "0.0.17"
 authorize = "0.1.2"
