@@ -5,4 +5,4 @@ authors = ["Denis Kolodin <deniskolodin@gmail.com>"]
 
 [dependencies]
 mould = "0.0.16"
-authorize = "0.1.1"
+authorize = "0.1.2"
