@@ -3,7 +3,7 @@ use std::marker::PhantomData;
 use std::sync::{Arc, Mutex};
 use mould::prelude::*;
 use authorize::{Role, Authorize};
-use authorize::checkers::TokenChecker;
+use checkers::TokenChecker;
 
 /// A handler which use `TokenChecker` to set role to session.
 /// The following actions available:
