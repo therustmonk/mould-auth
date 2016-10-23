@@ -2,7 +2,7 @@ use std::marker::PhantomData;
 use std::sync::{Arc, Mutex};
 use mould::prelude::*;
 use permission::HasPermission;
-use checkers::{Role, Authorize, TokenManager};
+use managers::{Role, Authorize, TokenManager};
 
 pub enum TokenPermission {
     CanAuth,

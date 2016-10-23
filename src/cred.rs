@@ -3,7 +3,7 @@ use std::marker::PhantomData;
 use std::sync::{Arc, Mutex};
 use mould::prelude::*;
 use permission::HasPermission;
-use checkers::{Role, Authorize, CredentialManager};
+use managers::{Role, Authorize, CredentialManager};
 
 pub enum AuthPermission {
     CanAuth,

@@ -9,9 +9,9 @@ pub extern crate identify;
 mod macros;
 mod token;
 mod cred;
-pub mod checkers;
+pub mod managers;
 
 pub use token::*;
 pub use cred::*;
-pub use checkers::*;
+pub use managers::*;
 
