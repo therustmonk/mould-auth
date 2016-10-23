@@ -1,7 +1,6 @@
 use std::error;
 use std::fmt;
 use std::collections::HashMap;
-use authorize::Role;
 use super::*;
 
 enum Rule<T: Role> {
