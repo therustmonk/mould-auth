@@ -3,7 +3,7 @@ use std::result;
 //use std::str::FromStr;
 //use identify::Identified;
 
-//pub mod map;
+pub mod map;
 
 pub trait Role /*: Identified<T>*/ {
 }

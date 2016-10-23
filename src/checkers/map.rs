@@ -9,7 +9,9 @@ enum Rule<T: Role> {
 }
 
 #[derive(Debug)]
-pub enum Error { }
+pub enum Error {
+    Unsupported,
+}
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -56,8 +58,8 @@ impl<T: Role + Clone + Send + 'static> StringChecker<T> {
     }
 }
 
-impl<T: Role> TokenChecker<T, Error> for StringChecker<T> {
-    fn get_role_for_token(&mut self, token: &str) -> Result<T, Error> {
+impl<T: Role> TokenManager<T> for StringChecker<T> {
+    fn pick_role(&mut self, token: &str) -> Result<Option<T>> {
         let (result, remove) = match self.tokens.get_mut(token) {
             Some(&mut Rule::Multiple(ref generator)) => (generator(), false),
             Some(&mut Rule::Once(ref mut role)) => (role.take(), true),
@@ -67,5 +69,9 @@ impl<T: Role> TokenChecker<T, Error> for StringChecker<T> {
             self.tokens.remove(token);
         }
         Ok(result)
+    }
+
+    fn acquire_token(&mut self, _: &Role) -> Result<String> {
+        Err(Box::new(Error::Unsupported))
     }
 }
