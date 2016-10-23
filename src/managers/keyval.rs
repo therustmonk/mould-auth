@@ -15,7 +15,7 @@ pub enum Error {
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "TockenChecker Error")
+        write!(f, "TokenChecker Error")
     }
 }
 
@@ -71,7 +71,7 @@ impl<T: Role> TokenManager<T> for StringChecker<T> {
         Ok(result)
     }
 
-    fn acquire_token(&mut self, _: &Role) -> Result<String> {
+    fn acquire_token(&mut self, _: &T) -> Result<String> {
         Err(Box::new(Error::Unsupported))
     }
 }

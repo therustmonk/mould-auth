@@ -13,7 +13,7 @@ pub type Result<T> = result::Result<T, Box<error::Error>>;
 
 pub trait TokenManager<R: Role> {
     fn pick_role(&mut self, token: &str) -> Result<Option<R>>;
-    fn acquire_token(&mut self, role: &Role) -> Result<String>;
+    fn acquire_token(&mut self, role: &R) -> Result<String>;
 }
 
 pub trait CredentialManager<R: Role> {
