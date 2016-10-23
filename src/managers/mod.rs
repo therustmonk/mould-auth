@@ -18,6 +18,6 @@ pub trait TokenManager<R: Role> {
 
 pub trait CredentialManager<R: Role> {
     fn pick_role(&mut self, login: &str, password: &str) -> Result<Option<R>>;
-    fn attach_password(&mut self, role: &R, password: &str) -> Result<Option<R>>;
+    fn attach_password(&mut self, role: &R, password: &str) -> Result<()>;
 }
 
