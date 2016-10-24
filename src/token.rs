@@ -38,7 +38,7 @@ impl<T, C, R> Service<T> for TokenService<C, R>
           R: Role + Send + Sync + 'static {
 
     fn route(&self, request: &Request) -> Box<Worker<T>> {
-        if request.action == "do-auth" {
+        if request.action == "do-login" {
             Box::new(TokenCheckWorker::new(self.checker.clone()))
         } else if request.action == "acquire-new" {
             Box::new(AcquireTokenWorker::new(self.checker.clone()))
