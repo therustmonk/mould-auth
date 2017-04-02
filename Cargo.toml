@@ -10,4 +10,3 @@ license = "MIT/Apache-2.0"
 [dependencies]
 mould = "0.0.19"
 permission = "0.1.0"
-identify = "0.1.0"

@@ -3,15 +3,11 @@
 #[macro_use]
 extern crate mould;
 pub extern crate permission;
-pub extern crate identify;
 
 #[macro_use]
 mod macros;
-mod token;
-mod cred;
-pub mod managers;
+pub mod token;
+pub mod cred;
 
 pub use token::*;
 pub use cred::*;
-pub use managers::*;
-

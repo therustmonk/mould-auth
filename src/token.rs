@@ -1,8 +1,10 @@
-use std::marker::PhantomData;
-use std::sync::{Arc, Mutex};
 use mould::prelude::*;
 use permission::HasPermission;
-use managers::{Role, Authorize, TokenManager};
+
+pub trait Manager {
+    fn set_role(&mut self, token: &str) -> Result<(), &str>;
+    fn acquire_token(&mut self) -> Result<String, &str>;
+}
 
 pub enum TokenPermission {
     CanAuth,
@@ -12,36 +14,22 @@ pub enum TokenPermission {
 /// A handler which use `TokenManager` to set role to session.
 /// The following actions available:
 /// * `do-auth` - try to authorize by token
-pub struct TokenService<C, R>
-    where C: TokenManager<R>,
-          R: Role {
+pub struct TokenService { }
 
-    checker: Arc<Mutex<C>>,
-    _role: PhantomData<R>,
-}
-
-impl<C, R> TokenService<C, R>
-    where C: TokenManager<R>,
-          R: Role {
-
-    pub fn new(checker: C) -> Self {
+impl TokenService {
+    pub fn new() -> Self {
         TokenService {
-            checker: Arc::new(Mutex::new(checker)),
-            _role: PhantomData,
-        }
-    }
+        } }
 }
 
-impl<T, C, R> Service<T> for TokenService<C, R>
-    where T: HasPermission<TokenPermission> + Authorize<R>,
-          C: TokenManager<R> + Send + 'static,
-          R: Role + Send + Sync + 'static {
+impl<T> Service<T> for TokenService
+    where T: HasPermission<TokenPermission> + Manager {
 
     fn route(&self, request: &Request) -> Box<Worker<T>> {
         if request.action == "do-login" {
-            Box::new(TokenCheckWorker::new(self.checker.clone()))
+            Box::new(TokenCheckWorker::new())
         } else if request.action == "acquire-new" {
-            Box::new(AcquireTokenWorker::new(self.checker.clone()))
+            Box::new(AcquireTokenWorker::new())
         } else {
             let msg = format!("Unknown action '{}' for token service!", request.action);
             Box::new(RejectWorker::new(msg))
@@ -49,77 +37,45 @@ impl<T, C, R> Service<T> for TokenService<C, R>
     }
 }
 
-struct TokenCheckWorker<C, R>
-    where C: TokenManager<R>, R: Role {
+struct TokenCheckWorker { }
 
-    checker: Arc<Mutex<C>>,
-    _role: PhantomData<R>,
-}
-
-impl<C, R> TokenCheckWorker<C, R>
-    where C: TokenManager<R>, R: Role {
-
-    fn new(checker: Arc<Mutex<C>>) -> Self {
-        TokenCheckWorker {
-            checker: checker,
-            _role: PhantomData,
-        }
+impl TokenCheckWorker {
+    fn new() -> Self {
+        TokenCheckWorker { }
     }
 }
 
-impl<T, C, R> Worker<T> for TokenCheckWorker<C, R>
-    where T: HasPermission<TokenPermission> + Authorize<R>,
-          C: TokenManager<R>,
-          R: Role {
+impl<T> Worker<T> for TokenCheckWorker
+    where T: HasPermission<TokenPermission> + Manager {
 
     fn prepare(&mut self, session: &mut T, mut request: Request) -> worker::Result<Shortcut> {
         permission_required!(session, TokenPermission::CanAuth);
         let token: String = extract_field!(request, "token");
-        let role = {
-            let mut guard = try!(self.checker.lock()
-                .or(Err("Impossible to check token!")));
-            try!(guard.pick_role(&token))
-        };
-        ensure_it!(role.is_some(), "Token is not valid!");
-        session.set_role(role);
+        session.set_role(&token)?;
         Ok(Shortcut::Done)
     }
 }
 
-struct AcquireTokenWorker<C, R> {
+struct AcquireTokenWorker {
     token: Option<String>,
-    checker: Arc<Mutex<C>>,
-    _role: PhantomData<R>,
 }
 
-impl<C, R> AcquireTokenWorker<C, R>
-    where C: TokenManager<R>, R: Role {
+impl AcquireTokenWorker {
 
-    fn new(checker: Arc<Mutex<C>>) -> Self {
+    fn new() -> Self {
         AcquireTokenWorker {
             token: None,
-            checker: checker,
-            _role: PhantomData,
         }
     }
 }
 
-impl<T, C, R> Worker<T> for AcquireTokenWorker<C, R>
-    where T: HasPermission<TokenPermission> + Authorize<R>,
-          C: TokenManager<R>,
-          R: Role {
+impl<T> Worker<T> for AcquireTokenWorker
+    where T: HasPermission<TokenPermission> + Manager {
 
     fn prepare(&mut self, session: &mut T, _: Request) -> worker::Result<Shortcut> {
         permission_required!(session, TokenPermission::CanAcquire);
-        if let &Some(ref role) = session.as_ref() {
-            let mut guard = try!(self.checker.lock()
-                .or(Err("Impossible to manage token!")));
-            let token = try!(guard.acquire_token(role));
-            self.token = Some(token);
-            Ok(Shortcut::Tuned)
-        } else {
-            Err(From::from("Can't extract role."))
-        }
+        self.token = Some(session.acquire_token()?);
+        Ok(Shortcut::Tuned)
     }
 
     fn realize(&mut self, _: &mut T, _: Option<Request>) -> worker::Result<Realize> {
