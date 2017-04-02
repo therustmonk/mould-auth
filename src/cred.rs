@@ -2,7 +2,7 @@ use mould::prelude::*;
 use permission::HasPermission;
 
 pub trait Manager {
-    fn set_role(&mut self, login: &str, password: &str) -> Result<(), &str>;
+    fn set_role(&mut self, login: &str, password: &str) -> Result<bool, &str>;
     fn attach_password(&mut self, password: &str) -> Result<(), &str>;
 }
 
@@ -51,8 +51,11 @@ impl<T> Worker<T> for AuthCheckWorker
         permission_required!(session, AuthPermission::CanAuth);
         let login: String = extract_field!(request, "login");
         let password: String = extract_field!(request, "password");
-        session.set_role(&login, &password)?;
-        Ok(Shortcut::Done)
+        if session.set_role(&login, &password)? {
+            Ok(Shortcut::Done)
+        } else {
+            Ok(Shortcut::Reject("wrong credentials".into()))
+        }
     }
 }
 

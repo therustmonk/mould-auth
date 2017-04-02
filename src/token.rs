@@ -2,7 +2,7 @@ use mould::prelude::*;
 use permission::HasPermission;
 
 pub trait Manager {
-    fn set_role(&mut self, token: &str) -> Result<(), &str>;
+    fn set_role(&mut self, token: &str) -> Result<bool, &str>;
     fn acquire_token(&mut self) -> Result<String, &str>;
 }
 
@@ -51,8 +51,11 @@ impl<T> Worker<T> for TokenCheckWorker
     fn prepare(&mut self, session: &mut T, mut request: Request) -> worker::Result<Shortcut> {
         permission_required!(session, TokenPermission::CanAuth);
         let token: String = extract_field!(request, "token");
-        session.set_role(&token)?;
-        Ok(Shortcut::Done)
+        if session.set_role(&token)? {
+            Ok(Shortcut::Done)
+        } else {
+            Ok(Shortcut::Reject("wrong token".into()))
+        }
     }
 }
 
