@@ -11,3 +11,5 @@ pub mod cred;
 
 pub use token::*;
 pub use cred::*;
+
+pub trait Role: 'static { }

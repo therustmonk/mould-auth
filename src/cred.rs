@@ -1,7 +1,9 @@
+use std::marker::PhantomData;
 use mould::prelude::*;
 use permission::HasPermission;
+use super::Role;
 
-pub trait Manager {
+pub trait Manager<R: Role> {
     fn set_role(&mut self, login: &str, password: &str) -> Result<bool, &str>;
     fn attach_password(&mut self, password: &str) -> Result<(), &str>;
 }
@@ -14,16 +16,23 @@ pub enum AuthPermission {
 /// A handler which use `CredentialManager` to set role to session.
 /// The following actions available:
 /// * `do-auth` - try to authorize by credential
-pub struct AuthService { }
+pub struct AuthService<R> {
+    _role: PhantomData<R>,
+}
 
-impl AuthService {
+impl<R> AuthService<R> {
     pub fn new() -> Self {
-        AuthService { }
+        AuthService {
+            _role: PhantomData,
+        }
     }
 }
 
-impl<T> Service<T> for AuthService
-    where T: HasPermission<AuthPermission> + Manager {
+unsafe impl<R> Sync for AuthService<R> { }
+unsafe impl<R> Send for AuthService<R> { }
+
+impl<T, R> Service<T> for AuthService<R>
+    where T: HasPermission<AuthPermission> + Manager<R>, R: Role {
 
     fn route(&self, request: &Request) -> Box<Worker<T>> {
         if request.action == "do-login" {
@@ -37,16 +46,20 @@ impl<T> Service<T> for AuthService
     }
 }
 
-struct AuthCheckWorker { }
+struct AuthCheckWorker<R> {
+    _role: PhantomData<R>,
+}
 
-impl AuthCheckWorker {
+impl<R> AuthCheckWorker<R> {
     fn new() -> Self {
-        AuthCheckWorker { }
+        AuthCheckWorker {
+            _role: PhantomData,
+        }
     }
 }
 
-impl<T> Worker<T> for AuthCheckWorker
-    where T: HasPermission<AuthPermission> + Manager {
+impl<T, R> Worker<T> for AuthCheckWorker<R>
+    where T: HasPermission<AuthPermission> + Manager<R>, R: Role {
     fn prepare(&mut self, session: &mut T, mut request: Request) -> worker::Result<Shortcut> {
         permission_required!(session, AuthPermission::CanAuth);
         let login: String = extract_field!(request, "login");
@@ -59,16 +72,20 @@ impl<T> Worker<T> for AuthCheckWorker
     }
 }
 
-struct ChangePasswordWorker { }
+struct ChangePasswordWorker<R> {
+    _role: PhantomData<R>,
+}
 
-impl ChangePasswordWorker {
+impl<R> ChangePasswordWorker<R> {
     fn new() -> Self {
-        ChangePasswordWorker { }
+        ChangePasswordWorker {
+            _role: PhantomData,
+        }
     }
 }
 
-impl<T> Worker<T> for ChangePasswordWorker
-    where T: HasPermission<AuthPermission> + Manager {
+impl<T, R> Worker<T> for ChangePasswordWorker<R>
+    where T: HasPermission<AuthPermission> + Manager<R>, R: Role {
 
     fn prepare(&mut self, session: &mut T, mut request: Request) -> worker::Result<Shortcut> {
         permission_required!(session, AuthPermission::CanChange);

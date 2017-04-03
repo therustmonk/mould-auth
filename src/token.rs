@@ -1,7 +1,9 @@
+use std::marker::PhantomData;
 use mould::prelude::*;
 use permission::HasPermission;
+use super::Role;
 
-pub trait Manager {
+pub trait Manager<R: Role> {
     fn set_role(&mut self, token: &str) -> Result<bool, &str>;
     fn acquire_token(&mut self) -> Result<String, &str>;
 }
@@ -14,16 +16,23 @@ pub enum TokenPermission {
 /// A handler which use `TokenManager` to set role to session.
 /// The following actions available:
 /// * `do-auth` - try to authorize by token
-pub struct TokenService { }
-
-impl TokenService {
-    pub fn new() -> Self {
-        TokenService {
-        } }
+pub struct TokenService<R> {
+    _role: PhantomData<R>,
 }
 
-impl<T> Service<T> for TokenService
-    where T: HasPermission<TokenPermission> + Manager {
+unsafe impl<R> Sync for TokenService<R> { }
+unsafe impl<R> Send for TokenService<R> { }
+
+impl<R> TokenService<R> {
+    pub fn new() -> Self {
+        TokenService {
+            _role: PhantomData,
+        }
+    }
+}
+
+impl<T, R> Service<T> for TokenService<R>
+    where T: HasPermission<TokenPermission> + Manager<R>, R: Role {
 
     fn route(&self, request: &Request) -> Box<Worker<T>> {
         if request.action == "do-login" {
@@ -37,16 +46,20 @@ impl<T> Service<T> for TokenService
     }
 }
 
-struct TokenCheckWorker { }
+struct TokenCheckWorker<R> {
+    _role: PhantomData<R>,
+}
 
-impl TokenCheckWorker {
+impl<R> TokenCheckWorker<R> {
     fn new() -> Self {
-        TokenCheckWorker { }
+        TokenCheckWorker {
+            _role: PhantomData,
+        }
     }
 }
 
-impl<T> Worker<T> for TokenCheckWorker
-    where T: HasPermission<TokenPermission> + Manager {
+impl<T, R> Worker<T> for TokenCheckWorker<R>
+    where T: HasPermission<TokenPermission> + Manager<R>, R: Role {
 
     fn prepare(&mut self, session: &mut T, mut request: Request) -> worker::Result<Shortcut> {
         permission_required!(session, TokenPermission::CanAuth);
@@ -59,21 +72,23 @@ impl<T> Worker<T> for TokenCheckWorker
     }
 }
 
-struct AcquireTokenWorker {
+struct AcquireTokenWorker<R> {
     token: Option<String>,
+    _role: PhantomData<R>,
 }
 
-impl AcquireTokenWorker {
+impl<R> AcquireTokenWorker<R> {
 
     fn new() -> Self {
         AcquireTokenWorker {
             token: None,
+            _role: PhantomData,
         }
     }
 }
 
-impl<T> Worker<T> for AcquireTokenWorker
-    where T: HasPermission<TokenPermission> + Manager {
+impl<T, R> Worker<T> for AcquireTokenWorker<R>
+    where T: HasPermission<TokenPermission> + Manager<R>, R: Role {
 
     fn prepare(&mut self, session: &mut T, _: Request) -> worker::Result<Shortcut> {
         permission_required!(session, TokenPermission::CanAcquire);
