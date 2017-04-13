@@ -1,6 +1,6 @@
 [package]
 name = "mould-auth"
-version = "0.0.10"
+version = "0.0.11"
 authors = ["Denis Kolodin <deniskolodin@gmail.com>"]
 readme = "README.md"
 description = "Authorization services for Mould framework."
