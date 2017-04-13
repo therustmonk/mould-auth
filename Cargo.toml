@@ -8,5 +8,5 @@ repository = "https://github.com/DenisKolodin/mould-auth"
 license = "MIT/Apache-2.0"
 
 [dependencies]
-mould = "0.0.19"
+mould = "0.0.20"
 permission = "0.1.0"
