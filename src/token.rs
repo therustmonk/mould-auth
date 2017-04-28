@@ -1,6 +1,7 @@
 use std::marker::PhantomData;
 use mould::prelude::*;
 use permission::HasPermission;
+use serde_json::{Map, Value};
 use super::Role;
 
 pub trait Manager<R: Role> {
@@ -87,6 +88,18 @@ impl<R> AcquireTokenWorker<R> {
     }
 }
 
+struct TokenAnswer {
+    token: String,
+}
+
+impl Into<Map<String, Value>> for TokenAnswer {
+    fn into(self) -> Map<String, Value> {
+        let mut result = Map::new();
+        result.insert("token".into(), self.token.into());
+        result
+    }
+}
+
 impl<T, R> Worker<T> for AcquireTokenWorker<R>
     where T: HasPermission<TokenPermission> + Manager<R>, R: Role {
 
@@ -98,9 +111,10 @@ impl<T, R> Worker<T> for AcquireTokenWorker<R>
 
     fn realize(&mut self, _: &mut T, _: Option<Request>) -> worker::Result<Realize> {
         let token = self.token.take().expect("token expected here");
-        Ok(Realize::OneItemAndDone(mould_object!{
-            "token" => token
-        }))
+        let answer = TokenAnswer {
+            token: token,
+        };
+        Ok(Realize::OneItemAndDone(answer.into()))
     }
 }
 
