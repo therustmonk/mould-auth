@@ -2,6 +2,8 @@
 
 Authorization services for Mould framework.
 
+[Documentation](https://docs.rs/mould-auth/)
+
 ## License
 
 Licensed under either of
