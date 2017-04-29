@@ -49,19 +49,14 @@ mod do_login {
     pub fn action<T, R>() -> service::Action<T>
         where T: Session + HasPermission<TokenPermission> + Manager<R>, R: Role,
     {
-        service::Action::from_worker(Worker::new())
+        let worker = Worker {
+            _role: PhantomData,
+        };
+        service::Action::from_worker(worker)
     }
 
     struct Worker<R> {
         _role: PhantomData<R>,
-    }
-
-    impl<R> Worker<R> {
-        fn new() -> Self {
-            Worker {
-                _role: PhantomData,
-            }
-        }
     }
 
     #[derive(Deserialize)]
@@ -93,22 +88,16 @@ mod acquire_new {
     pub fn action<T, R>() -> service::Action<T>
         where T: Session + HasPermission<TokenPermission> + Manager<R>, R: Role,
     {
-        service::Action::from_worker(Worker::new())
+        let worker = Worker {
+            token: None,
+            _role: PhantomData,
+        };
+        service::Action::from_worker(worker)
     }
 
     struct Worker<R> {
         token: Option<String>,
         _role: PhantomData<R>,
-    }
-
-    impl<R> Worker<R> {
-
-        fn new() -> Self {
-            Worker {
-                token: None,
-                _role: PhantomData,
-            }
-        }
     }
 
     #[derive(Serialize)]
