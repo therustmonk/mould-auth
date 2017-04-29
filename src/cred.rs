@@ -31,64 +31,100 @@ impl<R> AuthService<R> {
 unsafe impl<R> Sync for AuthService<R> { }
 unsafe impl<R> Send for AuthService<R> { }
 
-impl<T, R> service::Service<T> for AuthService<R>
-    where T: HasPermission<AuthPermission> + Manager<R>, R: Role {
-
-    fn route(&self, request: &Request) -> service::Result<Box<Worker<T>>> {
-        match request.action.as_ref() {
-            "do-login" => Ok(Box::new(AuthCheckWorker::new())),
-            "change-password" => Ok(Box::new(ChangePasswordWorker::new())),
+impl<T, R: 'static> service::Service<T> for AuthService<R>
+    where T: Session + HasPermission<AuthPermission> + Manager<R>, R: Role,
+{
+    fn route(&self, action: &str) -> service::Result<service::Action<T>> {
+        match action {
+            "do-login" => Ok(do_login::action()),
+            "change-password" => Ok(change_password::action()),
             _ => Err(service::ErrorKind::ActionNotFound.into()),
         }
     }
 }
 
-struct AuthCheckWorker<R> {
-    _role: PhantomData<R>,
-}
+mod do_login {
+    use super::*;
 
-impl<R> AuthCheckWorker<R> {
-    fn new() -> Self {
-        AuthCheckWorker {
-            _role: PhantomData,
+    pub fn action<T, R>() -> service::Action<T>
+        where T: Session + HasPermission<AuthPermission> + Manager<R>, R: Role,
+    {
+        service::Action::from_worker(Worker::new())
+    }
+
+    struct Worker<R> {
+        _role: PhantomData<R>,
+    }
+
+    impl<R> Worker<R> {
+        fn new() -> Self {
+            Worker {
+                _role: PhantomData,
+            }
+        }
+    }
+
+    #[derive(Deserialize)]
+    struct Request {
+        login: String,
+        password: String,
+    }
+
+    impl<T, R> worker::Worker<T> for Worker<R>
+        where T: Session + HasPermission<AuthPermission> + Manager<R>, R: Role,
+    {
+        type Request = Request;
+        type In = worker::Any;
+        type Out = worker::Any;
+
+        fn prepare(&mut self, session: &mut T, request: Self::Request) -> worker::Result<Shortcut> {
+            permission_required!(session, AuthPermission::CanAuth);
+            if session.set_role(&request.login, &request.password)? {
+                Ok(Shortcut::Done)
+            } else {
+                Ok(Shortcut::Reject("wrong credentials".into()))
+            }
         }
     }
 }
 
-impl<T, R> Worker<T> for AuthCheckWorker<R>
-    where T: HasPermission<AuthPermission> + Manager<R>, R: Role {
-    fn prepare(&mut self, session: &mut T, mut request: Request) -> worker::Result<Shortcut> {
-        permission_required!(session, AuthPermission::CanAuth);
-        let login: String = request.extract("login")?;
-        let password: String = request.extract("password")?;
-        if session.set_role(&login, &password)? {
+mod change_password {
+    use super::*;
+
+    pub fn action<T, R>() -> service::Action<T>
+        where T: Session + HasPermission<AuthPermission> + Manager<R>, R: Role,
+    {
+        service::Action::from_worker(Worker::new())
+    }
+
+    struct Worker<R> {
+        _role: PhantomData<R>,
+    }
+
+    impl<R> Worker<R> {
+        fn new() -> Self {
+            Worker {
+                _role: PhantomData,
+            }
+        }
+    }
+
+    #[derive(Deserialize)]
+    struct Request {
+        password: String,
+    }
+
+    impl<T, R> worker::Worker<T> for Worker<R>
+        where T: Session + HasPermission<AuthPermission> + Manager<R>, R: Role,
+    {
+        type Request = Request;
+        type In = worker::Any;
+        type Out = worker::Any;
+
+        fn prepare(&mut self, session: &mut T, request: Self::Request) -> worker::Result<Shortcut> {
+            permission_required!(session, AuthPermission::CanChange);
+            session.attach_password(&request.password)?;
             Ok(Shortcut::Done)
-        } else {
-            Ok(Shortcut::Reject("wrong credentials".into()))
         }
     }
 }
-
-struct ChangePasswordWorker<R> {
-    _role: PhantomData<R>,
-}
-
-impl<R> ChangePasswordWorker<R> {
-    fn new() -> Self {
-        ChangePasswordWorker {
-            _role: PhantomData,
-        }
-    }
-}
-
-impl<T, R> Worker<T> for ChangePasswordWorker<R>
-    where T: HasPermission<AuthPermission> + Manager<R>, R: Role {
-
-    fn prepare(&mut self, session: &mut T, mut request: Request) -> worker::Result<Shortcut> {
-        permission_required!(session, AuthPermission::CanChange);
-        let password: String = request.extract("password")?;
-        session.attach_password(&password)?;
-        Ok(Shortcut::Done)
-    }
-}
-

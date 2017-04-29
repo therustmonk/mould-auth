@@ -1,7 +1,6 @@
 use std::marker::PhantomData;
 use mould::prelude::*;
 use permission::HasPermission;
-use serde_json::{Map, Value};
 use super::Role;
 
 pub trait Manager<R: Role> {
@@ -32,86 +31,108 @@ impl<R> TokenService<R> {
     }
 }
 
-impl<T, R> service::Service<T> for TokenService<R>
-    where T: HasPermission<TokenPermission> + Manager<R>, R: Role {
-
-    fn route(&self, request: &Request) -> service::Result<Box<Worker<T>>> {
-        match request.action.as_ref() {
-            "do-login" => Ok(Box::new(TokenCheckWorker::new())),
-            "acquire-new" => Ok(Box::new(AcquireTokenWorker::new())),
+impl<T, R: 'static> service::Service<T> for TokenService<R>
+    where T: Session + HasPermission<TokenPermission> + Manager<R>, R: Role,
+{
+    fn route(&self, action: &str) -> service::Result<service::Action<T>> {
+        match action {
+            "do-login" => Ok(do_login::action()),
+            "acquire-new" => Ok(acquire_new::action()),
             _ => Err(service::ErrorKind::ActionNotFound.into()),
         }
     }
 }
 
-struct TokenCheckWorker<R> {
-    _role: PhantomData<R>,
-}
+mod do_login {
+    use super::*;
 
-impl<R> TokenCheckWorker<R> {
-    fn new() -> Self {
-        TokenCheckWorker {
-            _role: PhantomData,
+    pub fn action<T, R>() -> service::Action<T>
+        where T: Session + HasPermission<TokenPermission> + Manager<R>, R: Role,
+    {
+        service::Action::from_worker(Worker::new())
+    }
+
+    struct Worker<R> {
+        _role: PhantomData<R>,
+    }
+
+    impl<R> Worker<R> {
+        fn new() -> Self {
+            Worker {
+                _role: PhantomData,
+            }
+        }
+    }
+
+    #[derive(Deserialize)]
+    struct Request {
+        token: String,
+    }
+
+    impl<T, R> worker::Worker<T> for Worker<R>
+        where T: Session + HasPermission<TokenPermission> + Manager<R>, R: Role,
+    {
+        type Request = Request;
+        type In = worker::Any;
+        type Out = worker::Any;
+
+        fn prepare(&mut self, session: &mut T, request: Self::Request) -> worker::Result<Shortcut> {
+            permission_required!(session, TokenPermission::CanAuth);
+            if session.set_role(&request.token)? {
+                Ok(Shortcut::Done)
+            } else {
+                Ok(Shortcut::Reject("wrong token".into()))
+            }
         }
     }
 }
 
-impl<T, R> Worker<T> for TokenCheckWorker<R>
-    where T: HasPermission<TokenPermission> + Manager<R>, R: Role {
+mod acquire_new {
+    use super::*;
 
-    fn prepare(&mut self, session: &mut T, mut request: Request) -> worker::Result<Shortcut> {
-        permission_required!(session, TokenPermission::CanAuth);
-        let token: String = request.extract("token")?;
-        if session.set_role(&token)? {
-            Ok(Shortcut::Done)
-        } else {
-            Ok(Shortcut::Reject("wrong token".into()))
+    pub fn action<T, R>() -> service::Action<T>
+        where T: Session + HasPermission<TokenPermission> + Manager<R>, R: Role,
+    {
+        service::Action::from_worker(Worker::new())
+    }
+
+    struct Worker<R> {
+        token: Option<String>,
+        _role: PhantomData<R>,
+    }
+
+    impl<R> Worker<R> {
+
+        fn new() -> Self {
+            Worker {
+                token: None,
+                _role: PhantomData,
+            }
         }
     }
-}
 
-struct AcquireTokenWorker<R> {
-    token: Option<String>,
-    _role: PhantomData<R>,
-}
+    #[derive(Serialize)]
+    struct Out {
+        token: String,
+    }
 
-impl<R> AcquireTokenWorker<R> {
+    impl<T, R> worker::Worker<T> for Worker<R>
+        where T: Session + HasPermission<TokenPermission> + Manager<R>, R: Role,
+    {
+        type Request = worker::Any;
+        type In = worker::Any;
+        type Out = Out;
 
-    fn new() -> Self {
-        AcquireTokenWorker {
-            token: None,
-            _role: PhantomData,
+        fn prepare(&mut self, session: &mut T, _: Self::Request) -> worker::Result<Shortcut> {
+            permission_required!(session, TokenPermission::CanAcquire);
+            self.token = Some(session.acquire_token()?);
+            Ok(Shortcut::Tuned)
+        }
+
+        fn realize(&mut self, _: &mut T, _: Option<Self::In>) -> worker::Result<Realize<Self::Out>> {
+            let token = self.token.take().expect("token expected here");
+            Ok(Realize::OneItemAndDone(Out { token }))
         }
     }
+
 }
-
-struct TokenAnswer {
-    token: String,
-}
-
-impl Into<Map<String, Value>> for TokenAnswer {
-    fn into(self) -> Map<String, Value> {
-        let mut result = Map::new();
-        result.insert("token".into(), self.token.into());
-        result
-    }
-}
-
-impl<T, R> Worker<T> for AcquireTokenWorker<R>
-    where T: HasPermission<TokenPermission> + Manager<R>, R: Role {
-
-    fn prepare(&mut self, session: &mut T, _: Request) -> worker::Result<Shortcut> {
-        permission_required!(session, TokenPermission::CanAcquire);
-        self.token = Some(session.acquire_token()?);
-        Ok(Shortcut::Tuned)
-    }
-
-    fn realize(&mut self, _: &mut T, _: Option<Request>) -> worker::Result<Realize> {
-        let token = self.token.take().expect("token expected here");
-        let answer = TokenAnswer {
-            token: token,
-        };
-        Ok(Realize::OneItemAndDone(answer.into()))
-    }
-}
-
