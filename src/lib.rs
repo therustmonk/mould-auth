@@ -1,6 +1,5 @@
 //! Mould plugin for token authentication.
 
-#[macro_use]
 extern crate mould;
 pub extern crate permission;
 extern crate serde_json;

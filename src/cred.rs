@@ -62,8 +62,8 @@ impl<T, R> Worker<T> for AuthCheckWorker<R>
     where T: HasPermission<AuthPermission> + Manager<R>, R: Role {
     fn prepare(&mut self, session: &mut T, mut request: Request) -> worker::Result<Shortcut> {
         permission_required!(session, AuthPermission::CanAuth);
-        let login: String = extract_field!(request, "login");
-        let password: String = extract_field!(request, "password");
+        let login: String = request.extract("login")?;
+        let password: String = request.extract("password")?;
         if session.set_role(&login, &password)? {
             Ok(Shortcut::Done)
         } else {

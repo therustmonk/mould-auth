@@ -64,7 +64,7 @@ impl<T, R> Worker<T> for TokenCheckWorker<R>
 
     fn prepare(&mut self, session: &mut T, mut request: Request) -> worker::Result<Shortcut> {
         permission_required!(session, TokenPermission::CanAuth);
-        let token: String = extract_field!(request, "token");
+        let token: String = request.extract("token")?;
         if session.set_role(&token)? {
             Ok(Shortcut::Done)
         } else {
