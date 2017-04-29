@@ -31,17 +31,14 @@ impl<R> AuthService<R> {
 unsafe impl<R> Sync for AuthService<R> { }
 unsafe impl<R> Send for AuthService<R> { }
 
-impl<T, R> Service<T> for AuthService<R>
+impl<T, R> service::Service<T> for AuthService<R>
     where T: HasPermission<AuthPermission> + Manager<R>, R: Role {
 
-    fn route(&self, request: &Request) -> Box<Worker<T>> {
-        if request.action == "do-login" {
-            Box::new(AuthCheckWorker::new())
-        } else if request.action == "change-password" {
-            Box::new(ChangePasswordWorker::new())
-        } else {
-            let msg = format!("Unknown action '{}' for auth service!", request.action);
-            Box::new(RejectWorker::new(msg))
+    fn route(&self, request: &Request) -> service::Result<Box<Worker<T>>> {
+        match request.action.as_ref() {
+            "do-login" => Ok(Box::new(AuthCheckWorker::new())),
+            "change-password" => Ok(Box::new(ChangePasswordWorker::new())),
+            _ => Err(service::ErrorKind::ActionNotFound.into()),
         }
     }
 }

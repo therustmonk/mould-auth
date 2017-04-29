@@ -32,17 +32,14 @@ impl<R> TokenService<R> {
     }
 }
 
-impl<T, R> Service<T> for TokenService<R>
+impl<T, R> service::Service<T> for TokenService<R>
     where T: HasPermission<TokenPermission> + Manager<R>, R: Role {
 
-    fn route(&self, request: &Request) -> Box<Worker<T>> {
-        if request.action == "do-login" {
-            Box::new(TokenCheckWorker::new())
-        } else if request.action == "acquire-new" {
-            Box::new(AcquireTokenWorker::new())
-        } else {
-            let msg = format!("Unknown action '{}' for token service!", request.action);
-            Box::new(RejectWorker::new(msg))
+    fn route(&self, request: &Request) -> service::Result<Box<Worker<T>>> {
+        match request.action.as_ref() {
+            "do-login" => Ok(Box::new(TokenCheckWorker::new())),
+            "acquire-new" => Ok(Box::new(AcquireTokenWorker::new())),
+            _ => Err(service::ErrorKind::ActionNotFound.into()),
         }
     }
 }
