@@ -31,7 +31,7 @@ impl<R> AuthService<R> {
 unsafe impl<R> Sync for AuthService<R> { }
 unsafe impl<R> Send for AuthService<R> { }
 
-impl<T, R: 'static> service::Service<T> for AuthService<R>
+impl<T, R> service::Service<T> for AuthService<R>
     where T: Session + HasPermission<AuthPermission> + Manager<R>, R: Role,
 {
     fn route(&self, action: &str) -> service::Result<service::Action<T>> {

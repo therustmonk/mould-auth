@@ -31,7 +31,7 @@ impl<R> TokenService<R> {
     }
 }
 
-impl<T, R: 'static> service::Service<T> for TokenService<R>
+impl<T, R> service::Service<T> for TokenService<R>
     where T: Session + HasPermission<TokenPermission> + Manager<R>, R: Role,
 {
     fn route(&self, action: &str) -> service::Result<service::Action<T>> {
