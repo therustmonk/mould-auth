@@ -1,6 +1,5 @@
 use std::marker::PhantomData;
 use mould::prelude::*;
-use permission::HasPermission;
 use super::Role;
 
 pub trait Manager<R: Role> {
@@ -8,10 +7,12 @@ pub trait Manager<R: Role> {
     fn attach_password(&mut self, password: &str) -> Result<(), &str>;
 }
 
-pub enum AuthPermission {
+pub enum Permission {
     CanAuth,
     CanChange,
 }
+
+impl Rights for Permission { }
 
 /// A handler which use `CredentialManager` to set role to session.
 /// The following actions available:
@@ -32,7 +33,7 @@ unsafe impl<R> Sync for AuthService<R> { }
 unsafe impl<R> Send for AuthService<R> { }
 
 impl<T, R> service::Service<T> for AuthService<R>
-    where T: Session + HasPermission<AuthPermission> + Manager<R>, R: Role,
+    where T: Session + Require<Permission> + Manager<R>, R: Role,
 {
     fn route(&self, action: &str) -> service::Result<service::Action<T>> {
         match action {
@@ -47,7 +48,7 @@ mod do_login {
     use super::*;
 
     pub fn action<T, R>() -> service::Action<T>
-        where T: Session + HasPermission<AuthPermission> + Manager<R>, R: Role,
+        where T: Session + Require<Permission> + Manager<R>, R: Role,
     {
         let worker = Worker {
             _role: PhantomData,
@@ -66,14 +67,14 @@ mod do_login {
     }
 
     impl<T, R> worker::Worker<T> for Worker<R>
-        where T: Session + HasPermission<AuthPermission> + Manager<R>, R: Role,
+        where T: Session + Require<Permission> + Manager<R>, R: Role,
     {
         type Request = Request;
         type In = worker::Any;
         type Out = worker::Any;
 
         fn prepare(&mut self, session: &mut T, request: Self::Request) -> worker::Result<Shortcut> {
-            permission_required!(session, AuthPermission::CanAuth);
+            session.require(&Permission::CanAuth)?;
             if session.set_role(&request.login, &request.password)? {
                 Ok(Shortcut::Done)
             } else {
@@ -87,7 +88,7 @@ mod change_password {
     use super::*;
 
     pub fn action<T, R>() -> service::Action<T>
-        where T: Session + HasPermission<AuthPermission> + Manager<R>, R: Role,
+        where T: Session + Require<Permission> + Manager<R>, R: Role,
     {
         let worker = Worker {
             _role: PhantomData,
@@ -105,14 +106,14 @@ mod change_password {
     }
 
     impl<T, R> worker::Worker<T> for Worker<R>
-        where T: Session + HasPermission<AuthPermission> + Manager<R>, R: Role,
+        where T: Session + Require<Permission> + Manager<R>, R: Role,
     {
         type Request = Request;
         type In = worker::Any;
         type Out = worker::Any;
 
         fn prepare(&mut self, session: &mut T, request: Self::Request) -> worker::Result<Shortcut> {
-            permission_required!(session, AuthPermission::CanChange);
+            session.require(&Permission::CanChange)?;
             session.attach_password(&request.password)?;
             Ok(Shortcut::Done)
         }

@@ -1,6 +1,5 @@
 use std::marker::PhantomData;
 use mould::prelude::*;
-use permission::HasPermission;
 use super::Role;
 
 pub trait Manager<R: Role> {
@@ -8,10 +7,12 @@ pub trait Manager<R: Role> {
     fn acquire_token(&mut self) -> Result<String, &str>;
 }
 
-pub enum TokenPermission {
+pub enum Permission {
     CanAuth,
     CanAcquire,
 }
+
+impl Rights for Permission { }
 
 /// A handler which use `TokenManager` to set role to session.
 /// The following actions available:
@@ -32,7 +33,7 @@ impl<R> TokenService<R> {
 }
 
 impl<T, R> service::Service<T> for TokenService<R>
-    where T: Session + HasPermission<TokenPermission> + Manager<R>, R: Role,
+    where T: Session + Require<Permission> + Manager<R>, R: Role,
 {
     fn route(&self, action: &str) -> service::Result<service::Action<T>> {
         match action {
@@ -47,7 +48,7 @@ mod do_login {
     use super::*;
 
     pub fn action<T, R>() -> service::Action<T>
-        where T: Session + HasPermission<TokenPermission> + Manager<R>, R: Role,
+        where T: Session + Require<Permission> + Manager<R>, R: Role,
     {
         let worker = Worker {
             _role: PhantomData,
@@ -65,14 +66,14 @@ mod do_login {
     }
 
     impl<T, R> worker::Worker<T> for Worker<R>
-        where T: Session + HasPermission<TokenPermission> + Manager<R>, R: Role,
+        where T: Session + Require<Permission> + Manager<R>, R: Role,
     {
         type Request = Request;
         type In = worker::Any;
         type Out = worker::Any;
 
         fn prepare(&mut self, session: &mut T, request: Self::Request) -> worker::Result<Shortcut> {
-            permission_required!(session, TokenPermission::CanAuth);
+            session.require(&Permission::CanAuth)?;
             if session.set_role(&request.token)? {
                 Ok(Shortcut::Done)
             } else {
@@ -86,7 +87,7 @@ mod acquire_new {
     use super::*;
 
     pub fn action<T, R>() -> service::Action<T>
-        where T: Session + HasPermission<TokenPermission> + Manager<R>, R: Role,
+        where T: Session + Require<Permission> + Manager<R>, R: Role,
     {
         let worker = Worker {
             token: None,
@@ -106,14 +107,14 @@ mod acquire_new {
     }
 
     impl<T, R> worker::Worker<T> for Worker<R>
-        where T: Session + HasPermission<TokenPermission> + Manager<R>, R: Role,
+        where T: Session + Require<Permission> + Manager<R>, R: Role,
     {
         type Request = worker::Any;
         type In = worker::Any;
         type Out = Out;
 
         fn prepare(&mut self, session: &mut T, _: Self::Request) -> worker::Result<Shortcut> {
-            permission_required!(session, TokenPermission::CanAcquire);
+            session.require(&Permission::CanAcquire)?;
             self.token = Some(session.acquire_token()?);
             Ok(Shortcut::Tuned)
         }
