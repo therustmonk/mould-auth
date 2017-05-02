@@ -70,8 +70,8 @@ mod do_login {
         where T: Session + Require<Permission> + Manager<R>, R: Role,
     {
         type Request = Request;
-        type In = worker::Any;
-        type Out = worker::Any;
+        type In = ();
+        type Out = ();
 
         fn prepare(&mut self, session: &mut T, request: Self::Request) -> worker::Result<Shortcut> {
             session.require(&Permission::CanAuth)?;
@@ -109,8 +109,8 @@ mod change_password {
         where T: Session + Require<Permission> + Manager<R>, R: Role,
     {
         type Request = Request;
-        type In = worker::Any;
-        type Out = worker::Any;
+        type In = ();
+        type Out = ();
 
         fn prepare(&mut self, session: &mut T, request: Self::Request) -> worker::Result<Shortcut> {
             session.require(&Permission::CanChange)?;

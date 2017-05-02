@@ -69,8 +69,8 @@ mod do_login {
         where T: Session + Require<Permission> + Manager<R>, R: Role,
     {
         type Request = Request;
-        type In = worker::Any;
-        type Out = worker::Any;
+        type In = ();
+        type Out = ();
 
         fn prepare(&mut self, session: &mut T, request: Self::Request) -> worker::Result<Shortcut> {
             session.require(&Permission::CanAuth)?;
@@ -109,8 +109,8 @@ mod acquire_new {
     impl<T, R> worker::Worker<T> for Worker<R>
         where T: Session + Require<Permission> + Manager<R>, R: Role,
     {
-        type Request = worker::Any;
-        type In = worker::Any;
+        type Request = ();
+        type In = ();
         type Out = Out;
 
         fn prepare(&mut self, session: &mut T, _: Self::Request) -> worker::Result<Shortcut> {
