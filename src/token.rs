@@ -119,7 +119,7 @@ mod acquire_new {
             Ok(Shortcut::Tuned)
         }
 
-        fn realize(&mut self, _: &mut T, _: Option<Self::In>) -> worker::Result<Realize<Self::Out>> {
+        fn realize(&mut self, _: &mut T, _: Self::In) -> worker::Result<Realize<Self::Out>> {
             let token = self.token.take().expect("token expected here");
             Ok(Realize::OneItemAndDone(Out { token }))
         }
