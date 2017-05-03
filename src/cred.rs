@@ -76,7 +76,7 @@ mod do_login {
         type In = ();
         type Out = ();
 
-        fn prepare(&mut self, session: &mut T, request: Self::Request) -> worker::Result<Shortcut> {
+        fn prepare(&mut self, session: &mut T, request: Self::Request) -> worker::Result<Shortcut<Self::Out>> {
             session.require(&Permission::CanLogin)?;
             if session.set_role(&request.login, &request.password)? {
                 Ok(Shortcut::Done)
@@ -110,7 +110,7 @@ mod do_logout {
         type In = ();
         type Out = ();
 
-        fn prepare(&mut self, session: &mut T, _: Self::Request) -> worker::Result<Shortcut> {
+        fn prepare(&mut self, session: &mut T, _: Self::Request) -> worker::Result<Shortcut<Self::Out>> {
             session.require(&Permission::CanLogout)?;
             session.reset_role()?;
             Ok(Shortcut::Done)
@@ -146,7 +146,7 @@ mod change_password {
         type In = ();
         type Out = ();
 
-        fn prepare(&mut self, session: &mut T, request: Self::Request) -> worker::Result<Shortcut> {
+        fn prepare(&mut self, session: &mut T, request: Self::Request) -> worker::Result<Shortcut<Self::Out>> {
             session.require(&Permission::CanChangePassword)?;
             session.attach_password(&request.password)?;
             Ok(Shortcut::Done)

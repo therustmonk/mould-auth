@@ -74,7 +74,7 @@ mod do_login {
         type In = ();
         type Out = ();
 
-        fn prepare(&mut self, session: &mut T, request: Self::Request) -> worker::Result<Shortcut> {
+        fn prepare(&mut self, session: &mut T, request: Self::Request) -> worker::Result<Shortcut<Self::Out>> {
             session.require(&Permission::CanAuth)?;
             if session.set_role(&request.token)? {
                 Ok(Shortcut::Done)
@@ -92,14 +92,12 @@ mod acquire_new {
         where T: Session + Require<Permission> + Manager<R>, R: Role,
     {
         let worker = Worker {
-            token: None,
             _role: PhantomData,
         };
         service::Action::from_worker(worker)
     }
 
     struct Worker<R> {
-        token: Option<String>,
         _role: PhantomData<R>,
     }
 
@@ -115,15 +113,10 @@ mod acquire_new {
         type In = ();
         type Out = Out;
 
-        fn prepare(&mut self, session: &mut T, _: Self::Request) -> worker::Result<Shortcut> {
+        fn prepare(&mut self, session: &mut T, _: Self::Request) -> worker::Result<Shortcut<Self::Out>> {
             session.require(&Permission::CanAcquire)?;
-            self.token = Some(session.acquire_token()?);
-            Ok(Shortcut::Tuned)
-        }
-
-        fn realize(&mut self, _: &mut T, _: Self::In) -> worker::Result<Realize<Self::Out>> {
-            let token = self.token.take().expect("token expected here");
-            Ok(Realize::OneItemAndDone(Out { token }))
+            let token = session.acquire_token()?;
+            Ok(Shortcut::OneItemAndDone(Out { token }))
         }
     }
 
@@ -151,7 +144,7 @@ mod drop_token {
         type In = ();
         type Out = ();
 
-        fn prepare(&mut self, session: &mut T, _: Self::Request) -> worker::Result<Shortcut> {
+        fn prepare(&mut self, session: &mut T, _: Self::Request) -> worker::Result<Shortcut<Self::Out>> {
             session.require(&Permission::CanAcquire)?;
             session.drop_token()?;
             Ok(Shortcut::Done)
