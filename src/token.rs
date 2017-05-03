@@ -5,6 +5,7 @@ use super::Role;
 pub trait Manager<R: Role> {
     fn set_role(&mut self, token: &str) -> Result<bool, &str>;
     fn acquire_token(&mut self) -> Result<String, &str>;
+    fn drop_token(&mut self) -> Result<(), &str>;
 }
 
 pub enum Permission {
@@ -39,6 +40,7 @@ impl<T, R> service::Service<T> for TokenService<R>
         match action {
             "do-login" => Ok(do_login::action()),
             "acquire-new" => Ok(acquire_new::action()),
+            "drop-token" => Ok(drop_token::action()),
             _ => Err(service::ErrorKind::ActionNotFound.into()),
         }
     }
@@ -122,6 +124,37 @@ mod acquire_new {
         fn realize(&mut self, _: &mut T, _: Self::In) -> worker::Result<Realize<Self::Out>> {
             let token = self.token.take().expect("token expected here");
             Ok(Realize::OneItemAndDone(Out { token }))
+        }
+    }
+
+}
+mod drop_token {
+    use super::*;
+
+    pub fn action<T, R>() -> service::Action<T>
+        where T: Session + Require<Permission> + Manager<R>, R: Role,
+    {
+        let worker = Worker {
+            _role: PhantomData,
+        };
+        service::Action::from_worker(worker)
+    }
+
+    struct Worker<R> {
+        _role: PhantomData<R>,
+    }
+
+    impl<T, R> worker::Worker<T> for Worker<R>
+        where T: Session + Require<Permission> + Manager<R>, R: Role,
+    {
+        type Request = ();
+        type In = ();
+        type Out = ();
+
+        fn prepare(&mut self, session: &mut T, _: Self::Request) -> worker::Result<Shortcut> {
+            session.require(&Permission::CanAcquire)?;
+            session.drop_token()?;
+            Ok(Shortcut::Done)
         }
     }
 
