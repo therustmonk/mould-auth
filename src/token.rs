@@ -67,20 +67,22 @@ mod do_login {
         token: String,
     }
 
+    #[derive(Serialize)]
+    struct Out {
+        success: bool,
+    }
+
     impl<T, R> worker::Worker<T> for Worker<R>
         where T: Session + Require<Permission> + Manager<R>, R: Role,
     {
         type Request = Request;
         type In = ();
-        type Out = ();
+        type Out = Out;
 
         fn prepare(&mut self, session: &mut T, request: Self::Request) -> worker::Result<Shortcut<Self::Out>> {
             session.require(&Permission::CanAuth)?;
-            if session.set_role(&request.token)? {
-                Ok(Shortcut::Done)
-            } else {
-                Ok(Shortcut::Reject("wrong token".into()))
-            }
+            let success = session.set_role(&request.token)?;
+            Ok(Shortcut::OneItemAndDone(Out { success }))
         }
     }
 }

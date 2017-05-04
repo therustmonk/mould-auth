@@ -69,20 +69,22 @@ mod do_login {
         password: String,
     }
 
+    #[derive(Serialize)]
+    struct Out {
+        success: bool,
+    }
+
     impl<T, R> worker::Worker<T> for Worker<R>
         where T: Session + Require<Permission> + Manager<R>, R: Role,
     {
         type Request = Request;
         type In = ();
-        type Out = ();
+        type Out = Out;
 
         fn prepare(&mut self, session: &mut T, request: Self::Request) -> worker::Result<Shortcut<Self::Out>> {
             session.require(&Permission::CanLogin)?;
-            if session.set_role(&request.login, &request.password)? {
-                Ok(Shortcut::Done)
-            } else {
-                Ok(Shortcut::Reject("wrong credentials".into()))
-            }
+            let success = session.set_role(&request.login, &request.password)?;
+            Ok(Shortcut::OneItemAndDone(Out { success }))
         }
     }
 }
